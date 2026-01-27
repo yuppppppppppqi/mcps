@@ -1,0 +1,14 @@
+# MacOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+
+# MCP Tool specific
+unsplash-downloader/test_output/
+remove-bg/test_output/

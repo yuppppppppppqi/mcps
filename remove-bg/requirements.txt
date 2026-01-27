@@ -1,0 +1,4 @@
+mcp
+rembg[cpu]
+pillow
+uvicorn
