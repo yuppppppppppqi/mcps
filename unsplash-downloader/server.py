@@ -2,6 +2,7 @@ from mcp.server.fastmcp import FastMCP
 from playwright.async_api import async_playwright
 import os
 import time
+import asyncio
 
 
 # Initialize FastMCP server
@@ -71,38 +72,49 @@ async def download_images(
             
             images = await page.locator("figure img").all()
             
-            count_downloaded = 0
+            # 1. Collect valid URLs first
+            valid_image_tasks = []
+            
             for i, img in enumerate(images):
-                if count_downloaded >= count:
+                if len(valid_image_tasks) >= count:
                     break
                 
                 src = await img.get_attribute("src")
                 if not src:
                     continue
                 
-                # Filter out small icons or user avatars if possible (check url pattern)
+                # Filter out small icons or user avatars
                 if "profile" in src or "avatar" in src:
                     continue
                     
-                # Modify URL for better quality if needed (optional)
-                # Unsplash urls usually look like https://images.unsplash.com/photo-...?ixlib=...&w=1000&q=80
-                # We can change w=1080 or similar.
-                
-                # Download the image using playwright request context (async)
-                response = await page.request.get(src)
-                if response.status == 200:
-                    filename = f"{query}_{count_downloaded + 1}.jpg"
-                    filepath = os.path.join(save_dir, filename)
-                    
-                    # Read binary data
-                    data = await response.body()
-                    
-                    # Write to file (sync but fast enough, or could use asyncio.to_thread)
-                    with open(filepath, "wb") as f:
-                        f.write(data)
-                    
-                    downloaded_files.append(filepath)
-                    count_downloaded += 1
+                valid_image_tasks.append(src)
+
+            # 2. Define download worker
+            async def download_single_image(src, index):
+                try:
+                    # Download the image using playwright request context (async)
+                    response = await page.request.get(src)
+                    if response.status == 200:
+                        filename = f"{query}_{index + 1}.jpg"
+                        filepath = os.path.join(save_dir, filename)
+                        
+                        # Read binary data
+                        data = await response.body()
+                        
+                        # Write to file (sync but fast enough, or could use asyncio.to_thread)
+                        with open(filepath, "wb") as f:
+                            f.write(data)
+                        
+                        return filepath
+                except Exception as e:
+                    print(f"Failed to download {src}: {e}")
+                    return None
+            
+            # 3. Execute downloads in parallel
+            if valid_image_tasks:
+                tasks = [download_single_image(src, i) for i, src in enumerate(valid_image_tasks)]
+                results = await asyncio.gather(*tasks)
+                downloaded_files = [f for f in results if f is not None]
                 
         except Exception as e:
             return f"Error occurred: {str(e)}"
