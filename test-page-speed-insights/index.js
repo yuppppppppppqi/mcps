@@ -1,7 +1,17 @@
 #!/usr/bin/env node
 const { Server } = require('@modelcontextprotocol/sdk/server/index.js');
 const { StdioServerTransport } = require('@modelcontextprotocol/sdk/server/stdio.js');
-require('dotenv').config();
+const path = require('path');
+// Load environment variables without printing to console
+// Some versions of dotenv or certain environments might still print info/warnings.
+// We temporarily hijack console.log/error to ensure absolute silence during initialization.
+const originalLog = console.log;
+const originalError = console.error;
+console.log = () => { };
+console.error = () => { };
+require('dotenv').config({ path: path.join(__dirname, '.env') });
+console.log = originalLog;
+console.error = originalError;
 const {
     CallToolRequestSchema,
     ListToolsRequestSchema,
@@ -195,7 +205,7 @@ function zodToJsonSchema(schema) {
 async function main() {
     const transport = new StdioServerTransport();
     await server.connect(transport);
-    console.error('PageSpeed Insights MCP Server running on stdio');
+    // Do not log anything to console/stderr on startup to avoid protocol interference
 }
 
 main().catch((error) => {

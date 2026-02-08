@@ -38,7 +38,7 @@ async def download_images(
     downloaded_files = []
     
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=False) # Run headless=False to see what's happening, can be changed later
+        browser = await p.chromium.launch(headless=True) # Run headless=False to see what's happening, can be changed later
         page = await browser.new_page()
         
         try:
